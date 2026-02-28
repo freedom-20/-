@@ -1,0 +1,852 @@
+角色存卡
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小涵角色卡 · xiaohanjueseka</title>
+    <!-- 标准 PWA manifest (使用 data URI 内联) -->
+    <link rel="manifest" href="data:application/manifest+json,{
+        &quot;name&quot;: &quot;小涵角色卡&quot;,
+        &quot;short_name&quot;: &quot;小涵卡册&quot;,
+        &quot;start_url&quot;: &quot;./&quot;,
+        &quot;display&quot;: &quot;standalone&quot;,
+        &quot;background_color&quot;: &quot;#f5f7fb&quot;,
+        &quot;theme_color&quot;: &quot;#1f2b47&quot;,
+        &quot;icons&quot;: [
+            {
+                &quot;src&quot;: &quot;https://i.postimg.cc/GtsZ5wrG/1770993841232.jpg&quot;,
+                &quot;sizes&quot;: &quot;192x192&quot;,
+                &quot;type&quot;: &quot;image/jpeg&quot;
+            },
+            {
+                &quot;src&quot;: &quot;https://i.postimg.cc/GtsZ5wrG/1770993841232.jpg&quot;,
+                &quot;sizes&quot;: &quot;512x512&quot;,
+                &quot;type&quot;: &quot;image/jpeg&quot;
+            }
+        ]
+    }">
+    <!-- Apple 触摸图标 (同样使用该图片) -->
+    <link rel="apple-touch-icon" href="https://i.postimg.cc/GtsZ5wrG/1770993841232.jpg">
+    <!-- Font Awesome 5 (免费) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        /* 全局重置，完全全屏 */
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: #f5f7fb;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #app {
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        /* 头部更紧凑，无标题文字 */
+        .app-header {
+            background: #ffffff;
+            padding: 8px 16px 4px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        /* 左侧占位空元素，右侧图标保持原样 */
+        .app-header .left-placeholder {
+            width: 0;
+            flex: 0 0 0;
+        }
+        .header-actions {
+            display: flex;
+            gap: 18px;
+            color: #4a5b7a;
+        }
+        .header-actions i {
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px;
+        }
+        /* 主内容滚动区 */
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 8px 4px;
+            background: #f9fafc;
+        }
+        /* 分类层级栏——超紧凑，可横向滚动 */
+        .category-tier {
+            background: white;
+            border-radius: 16px;
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .tier-title {
+            font-size: 0.7rem;
+            color: #6f7b92;
+            letter-spacing: 0.2px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .tier-items {
+            display: flex;
+            flex-wrap: nowrap;          /* 不换行，横向滚动 */
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            gap: 6px;
+            padding-bottom: 2px;         /* 留出一点空间 */
+            scrollbar-width: none;        /* 隐藏滚动条 Firefox */
+        }
+        .tier-items::-webkit-scrollbar {
+            display: none;                /* 隐藏滚动条 Chrome/Safari */
+        }
+        .category-pill {
+            background: #edf2f9;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            color: #1f2937;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            flex-shrink: 0;               /* 禁止压缩 */
+        }
+        .category-pill.active {
+            background: #1f2b47;
+            color: white;
+            border-color: #1f2b47;
+        }
+        .category-pill .pill-actions {
+            display: flex;
+            gap: 2px;
+            margin-left: 2px;
+            font-size: 0.65rem;
+        }
+        .category-pill i {
+            cursor: pointer;
+            opacity: 0.7;
+        }
+        .add-button {
+            background: white;
+            border: 1px dashed #a0b3d9;
+            color: #2b3d6b;
+            padding: 3px 10px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        /* 卡片网格 — 一排五个 */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .character-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+            border: 1px solid #f0f0f0;
+            transition: transform 0.1s;
+            cursor: pointer;
+        }
+        .character-card:active { transform: scale(0.97); }
+        .card-img {
+            width: 100%;
+            aspect-ratio: 1/1;
+            background: #eaeef4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #a0b3d9;
+            object-fit: cover;
+        }
+        .card-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .card-info {
+            padding: 4px 3px 6px;
+        }
+        .card-name {
+            font-weight: 600;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .card-status {
+            font-size: 0.55rem;
+            color: #6f7b92;
+            margin-top: 2px;
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+        .status-badge {
+            background: #e0e7f0;
+            padding: 1px 4px;
+            border-radius: 30px;
+        }
+        /* 详情页/表单页 */
+        .detail-container {
+            padding: 0 10px 12px;
+        }
+        .detail-field {
+            background: white;
+            border-radius: 14px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border: 1px solid #edf2f9;
+        }
+        .field-label {
+            font-size: 0.7rem;
+            color: #6b7c9f;
+            margin-bottom: 3px;
+        }
+        .field-value {
+            font-weight: 500;
+            word-break: break-word;
+            font-size: 0.9rem;
+        }
+        .img-preview {
+            width: 100%;
+            max-height: 150px;
+            object-fit: contain;
+            background: #f5f5f5;
+            border-radius: 12px;
+            margin: 5px 0;
+        }
+        .file-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f4f7fc;
+            padding: 6px 10px;
+            border-radius: 12px;
+            margin: 5px 0;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 2 1 150px;
+        }
+        .file-category {
+            background: #d9e2ef;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        .btn-icon {
+            background: transparent;
+            border: none;
+            font-size: 1rem;
+            color: #3e4f72;
+            padding: 4px;
+            cursor: pointer;
+        }
+        .bottom-delete {
+            margin-top: 20px;
+            text-align: center;
+            color: #c00;
+            font-weight: 500;
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+        /* 表单元素 */
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #dde3ed;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .tag-check-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin: 5px 0;
+        }
+        .tag-check {
+            background: #f0f4fa;
+            padding: 4px 10px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.75rem;
+        }
+        button.primary {
+            background: #1f2b47;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 30px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            width: 100%;
+            margin: 12px 0;
+        }
+        .empty-state {
+            text-align: center;
+            color: #a6b7d4;
+            padding: 20px 0;
+            grid-column: span 5;
+        }
+        .hidden { display: none; }
+        /* 长按菜单简单浮层 (用系统prompt代替，不额外实现) */
+    </style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+    (function() {
+        // ---------- 存储 keys ----------
+        const STORAGE_CARDS = 'st_cards';
+        const STORAGE_TRASH = 'st_trash';
+        const STORAGE_MAIN_CATS = 'st_main_cats';
+        const STORAGE_TAG_CATS = 'st_tag_cats';
+
+        // ---------- 默认数据 ----------
+        const defaultMainCats = ['单人', '多人'];
+        const defaultTagCats = ['现代言情', '古代言情', '骨科/伪骨科', '年上', '年下', '仙侠', '奇幻', '悬疑', '都市', '穿越'];
+
+        // 全局状态
+        let cards = [];               // 正常角色卡
+        let trash = [];               // 回收站
+        let mainCategories = [...defaultMainCats];
+        let tagCategories = [...defaultTagCats];
+
+        // 筛选状态
+        let selectedMain = null;       // null表示全部
+        let selectedStatus = null;     // null表示全部
+        let selectedTag = null;        // null表示全部
+
+        // 当前视图: 'home', 'trash', 'form', 'detail'
+        let currentView = 'home';
+        let editingCardId = null;      // 编辑/详情 的卡片id
+
+        // 临时存储上传的图片
+        window._tempImage = null;
+
+        // 加载数据
+        function loadFromStorage() {
+            try {
+                const c = localStorage.getItem(STORAGE_CARDS);
+                if (c) cards = JSON.parse(c);
+                const t = localStorage.getItem(STORAGE_TRASH);
+                if (t) trash = JSON.parse(t);
+                const mc = localStorage.getItem(STORAGE_MAIN_CATS);
+                if (mc) mainCategories = JSON.parse(mc);
+                const tc = localStorage.getItem(STORAGE_TAG_CATS);
+                if (tc) tagCategories = JSON.parse(tc);
+            } catch (e) { console.warn('读取失败', e); }
+            if (!Array.isArray(cards)) cards = [];
+            if (!Array.isArray(trash)) trash = [];
+            if (!Array.isArray(mainCategories) || mainCategories.length===0) mainCategories = [...defaultMainCats];
+            if (!Array.isArray(tagCategories) || tagCategories.length===0) tagCategories = [...defaultTagCats];
+        }
+        function saveAll() {
+            localStorage.setItem(STORAGE_CARDS, JSON.stringify(cards));
+            localStorage.setItem(STORAGE_TRASH, JSON.stringify(trash));
+            localStorage.setItem(STORAGE_MAIN_CATS, JSON.stringify(mainCategories));
+            localStorage.setItem(STORAGE_TAG_CATS, JSON.stringify(tagCategories));
+        }
+
+        function uid() { return Date.now() + '-' + Math.random().toString(36).substr(2, 9); }
+
+        // 渲染入口
+        function render() {
+            if (currentView === 'home') renderHome();
+            else if (currentView === 'trash') renderTrash();
+            else if (currentView === 'form') renderForm();
+            else if (currentView === 'detail') renderDetail();
+        }
+
+        // ---------- 主界面 (无标题文字) ----------
+        function renderHome() {
+            const filtered = cards.filter(c => {
+                if (selectedMain && c.mainCategory !== selectedMain) return false;
+                if (selectedStatus && c.status !== selectedStatus) return false;
+                if (selectedTag && (!c.tags || !c.tags.includes(selectedTag))) return false;
+                return true;
+            });
+
+            const html = `
+                <div class="app-header">
+                    <div class="left-placeholder"></div> <!-- 原来标题位置留空 -->
+                    <div class="header-actions">
+                        <i class="fas fa-plus-circle" onclick="createCard()" title="新建角色卡"></i>
+                        <i class="fas fa-trash-alt" onclick="goToTrash()" title="回收站"></i>
+                    </div>
+                </div>
+                <div class="scroll-area" id="home-scroll">
+                    <!-- 主分类 Tier 紧凑 + 横向滚动 -->
+                    <div class="category-tier">
+                        <div class="tier-title"> 主分类 · <span style="flex:1; text-align:right;"><i class="fas fa-plus-circle add-button" onclick="addMainCategory()"> 新增</i></span></div>
+                        <div class="tier-items" id="main-cats-container">
+                            <div class="category-pill ${!selectedMain ? 'active' : ''}" onclick="selectMain(null)">全部</div>
+                            ${mainCategories.map(cat => `
+                                <div class="category-pill ${selectedMain === cat ? 'active' : ''}">
+                                    <span onclick="selectMain('${cat}')" style="cursor:pointer;">${cat}</span>
+                                    <span class="pill-actions">
+                                        <i class="fas fa-pen" onclick="editMainCategory('${cat}')"></i>
+                                        <i class="fas fa-times" onclick="deleteMainCategory('${cat}')"></i>
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <!-- 游玩状态 Tier (不可修改) 横向滚动 -->
+                    <div class="category-tier">
+                        <div class="tier-title"> 游玩状态</div>
+                        <div class="tier-items">
+                            <div class="category-pill ${!selectedStatus ? 'active' : ''}" onclick="selectStatus(null)">全部</div>
+                            <div class="category-pill ${selectedStatus === '没玩过' ? 'active' : ''}" onclick="selectStatus('没玩过')">没玩过</div>
+                            <div class="category-pill ${selectedStatus === '已玩过' ? 'active' : ''}" onclick="selectStatus('已玩过')">已玩过</div>
+                            <div class="category-pill ${selectedStatus === '正在玩' ? 'active' : ''}" onclick="selectStatus('正在玩')">正在玩</div>
+                        </div>
+                    </div>
+                    <!-- 分类标签 Tier + 管理 横向滚动 -->
+                    <div class="category-tier">
+                        <div class="tier-title">️ 分类标签 <span style="flex:1; text-align:right;"><i class="fas fa-plus-circle add-button" onclick="addTagCategory()"> 新增</i></span></div>
+                        <div class="tier-items" id="tag-cats-container">
+                            <div class="category-pill ${!selectedTag ? 'active' : ''}" onclick="selectTag(null)">全部</div>
+                            ${tagCategories.map(tag => `
+                                <div class="category-pill ${selectedTag === tag ? 'active' : ''}">
+                                    <span onclick="selectTag('${tag}')" style="cursor:pointer;">${tag}</span>
+                                    <span class="pill-actions">
+                                        <i class="fas fa-pen" onclick="editTagCategory('${tag}')"></i>
+                                        <i class="fas fa-times" onclick="deleteTagCategory('${tag}')"></i>
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <!-- 卡片网格 一排五个 -->
+                    <div class="card-grid" id="card-grid">
+                        ${filtered.length === 0 ? '<div class="empty-state"> 还没有角色卡，点 + 创建</div>' : ''}
+                        ${filtered.map(c => `
+                            <div class="character-card" onclick="viewDetail('${c.id}')">
+                                <div class="card-img">
+                                    ${c.imageData ? `<img src="${c.imageData}" alt="角色">` : '<i class="fas fa-user-circle"></i>'}
+                                </div>
+                                <div class="card-info">
+                                    <div class="card-name">${c.name || '未命名'}</div>
+                                    <div class="card-status">
+                                        <span class="status-badge">${c.status || '没玩过'}</span>
+                                        ${c.mainCategory ? `<span class="status-badge">${c.mainCategory}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // 全局函数 (与之前一致，加上长按分类相关)
+        window.selectMain = (cat) => { selectedMain = cat; render(); };
+        window.selectStatus = (s) => { selectedStatus = s; render(); };
+        window.selectTag = (t) => { selectedTag = t; render(); };
+        window.goToTrash = () => { currentView = 'trash'; render(); };
+        window.createCard = () => { editingCardId = null; window._tempImage = null; currentView = 'form'; render(); };
+        window.viewDetail = (id) => { editingCardId = id; currentView = 'detail'; render(); };
+        window.goHome = () => { currentView = 'home'; render(); };
+
+        // 主分类管理
+        window.addMainCategory = () => {
+            const newName = prompt('输入新主分类名称(如: 单人)');
+            if (newName && newName.trim() && !mainCategories.includes(newName.trim())) {
+                mainCategories.push(newName.trim());
+                saveAll(); render();
+            }
+        };
+        window.editMainCategory = (old) => {
+            const newName = prompt('修改分类名称', old);
+            if (newName && newName.trim() && newName !== old) {
+                const idx = mainCategories.indexOf(old);
+                if (idx !== -1) {
+                    mainCategories[idx] = newName.trim();
+                    cards.forEach(c => { if (c.mainCategory === old) c.mainCategory = newName.trim(); });
+                    trash.forEach(c => { if (c.mainCategory === old) c.mainCategory = newName.trim(); });
+                    if (selectedMain === old) selectedMain = newName.trim();
+                    saveAll(); render();
+                }
+            }
+        };
+        window.deleteMainCategory = (cat) => {
+            if (!confirm(`删除分类“${cat}”，使用中的卡片主分类将被置空。继续？`)) return;
+            mainCategories = mainCategories.filter(c => c !== cat);
+            cards.forEach(c => { if (c.mainCategory === cat) c.mainCategory = ''; });
+            trash.forEach(c => { if (c.mainCategory === cat) c.mainCategory = ''; });
+            if (selectedMain === cat) selectedMain = null;
+            saveAll(); render();
+        };
+
+        // 标签管理
+        window.addTagCategory = () => {
+            const newTag = prompt('输入新标签(如: 科幻)');
+            if (newTag && newTag.trim() && !tagCategories.includes(newTag.trim())) {
+                tagCategories.push(newTag.trim());
+                saveAll(); render();
+            }
+        };
+        window.editTagCategory = (old) => {
+            const newTag = prompt('修改标签', old);
+            if (newTag && newTag.trim() && newTag !== old) {
+                const idx = tagCategories.indexOf(old);
+                if (idx !== -1) {
+                    tagCategories[idx] = newTag.trim();
+                    cards.forEach(c => {
+                        if (c.tags && c.tags.includes(old)) {
+                            c.tags = c.tags.map(t => t === old ? newTag.trim() : t);
+                        }
+                    });
+                    trash.forEach(c => {
+                        if (c.tags && c.tags.includes(old)) {
+                            c.tags = c.tags.map(t => t === old ? newTag.trim() : t);
+                        }
+                    });
+                    if (selectedTag === old) selectedTag = newTag.trim();
+                    saveAll(); render();
+                }
+            }
+        };
+        window.deleteTagCategory = (tag) => {
+            if (!confirm(`删除标签“${tag}”，将从所有卡片中移除。继续？`)) return;
+            tagCategories = tagCategories.filter(t => t !== tag);
+            cards.forEach(c => { if (c.tags) c.tags = c.tags.filter(t => t !== tag); });
+            trash.forEach(c => { if (c.tags) c.tags = c.tags.filter(t => t !== tag); });
+            if (selectedTag === tag) selectedTag = null;
+            saveAll(); render();
+        };
+
+        // 回收站
+        function renderTrash() {
+            const html = `
+                <div class="app-header">
+                    <h1><i class="fas fa-arrow-left" onclick="goHome()" style="margin-right:10px;"></i>回收站</h1>
+                    <div></div>
+                </div>
+                <div class="scroll-area">
+                    ${trash.length === 0 ? '<div class="empty-state">️ 回收站空空</div>' : ''}
+                    <div class="card-grid" style="grid-template-columns: repeat(5, 1fr);">
+                        ${trash.map(c => `
+                            <div class="character-card" style="opacity:0.8;">
+                                <div class="card-img">
+                                    ${c.imageData ? `<img src="${c.imageData}">` : '<i class="fas fa-user-slash"></i>'}
+                                </div>
+                                <div class="card-info">
+                                    <div class="card-name">${c.name}</div>
+                                    <div style="display:flex; gap:4px; margin-top:4px;">
+                                        <button class="btn-icon" onclick="restoreCard('${c.id}')" title="还原"><i class="fas fa-trash-restore"></i></button>
+                                        <button class="btn-icon" onclick="permanentDelete('${c.id}')" title="永久删除"><i class="fas fa-times-circle" style="color:#c00;"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+        window.restoreCard = (id) => {
+            const idx = trash.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                cards.push(trash[idx]);
+                trash.splice(idx, 1);
+                saveAll(); renderTrash();
+            }
+        };
+        window.permanentDelete = (id) => {
+            if (confirm('彻底删除这张角色卡？不可恢复。')) {
+                trash = trash.filter(c => c.id !== id);
+                saveAll(); renderTrash();
+            }
+        };
+
+        // 表单页 (创建/编辑)
+        function renderForm() {
+            const card = editingCardId ? cards.find(c => c.id === editingCardId) || trash.find(c => c.id === editingCardId) : null;
+            const isEdit = !!card;
+            const title = isEdit ? '编辑角色卡' : '新建角色卡';
+
+            const imageData = card ? (card.imageData || '') : (window._tempImage || '');
+            const name = card ? (card.name || '') : '';
+            const author = card ? (card.author || '') : '';
+            const source = card ? (card.source || '') : '';
+            const sourceLink = card ? (card.sourceLink || '') : '';
+            const status = card ? (card.status || '没玩过') : '没玩过';
+            const mainCat = card ? (card.mainCategory || (mainCategories[0] || '')) : (mainCategories[0] || '');
+            const selectedTags = card ? (card.tags || []) : [];
+
+            const html = `
+                <div class="app-header">
+                    <h1><i class="fas fa-arrow-left" onclick="goHome()" style="margin-right:10px;"></i>${title}</h1>
+                    <div></div>
+                </div>
+                <div class="scroll-area detail-container">
+                    <div class="detail-field">
+                        <div class="field-label">角色图片 (点击上传)</div>
+                        <input type="file" accept="image/*" id="uploadImageInput" style="display:none;" onchange="handleImageUpload(event)">
+                        <div onclick="document.getElementById('uploadImageInput').click()" style="text-align:center;">
+                            ${imageData ? `<img src="${imageData}" class="img-preview">` : '<div style="height:80px; background:#f0f4fa; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-camera"></i> 点此上传</div>'}
+                        </div>
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">角色名称</div>
+                        <input type="text" id="cardName" value="${(name||'').replace(/"/g, '&quot;')}" placeholder="例: 洛天依">
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">作者 (选填)</div>
+                        <input type="text" id="cardAuthor" value="${(author||'').replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">来源 (选填)</div>
+                        <input type="text" id="cardSource" value="${(source||'').replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">来源链接 (选填)</div>
+                        <input type="url" id="cardLink" value="${(sourceLink||'').replace(/"/g, '&quot;')}">
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">主分类</div>
+                        <select id="cardMainCat">
+                            ${mainCategories.map(c => `<option value="${c}" ${mainCat === c ? 'selected' : ''}>${c}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">游玩状态</div>
+                        <select id="cardStatus">
+                            <option ${status==='没玩过'?'selected':''}>没玩过</option>
+                            <option ${status==='已玩过'?'selected':''}>已玩过</option>
+                            <option ${status==='正在玩'?'selected':''}>正在玩</option>
+                        </select>
+                    </div>
+                    <div class="detail-field">
+                        <div class="field-label">标签 (可多选)</div>
+                        <div class="tag-check-group" id="tagCheckGroup">
+                            ${tagCategories.map(tag => `
+                                <label class="tag-check">
+                                    <input type="checkbox" value="${tag}" ${selectedTags.includes(tag) ? 'checked' : ''}> ${tag}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <button class="primary" onclick="saveCard('${isEdit ? card.id : ''}')">保存角色卡</button>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        window.handleImageUpload = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                window._tempImage = e.target.result;
+                renderForm();
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.saveCard = function(id) {
+            const name = document.getElementById('cardName')?.value.trim() || '未命名';
+            const author = document.getElementById('cardAuthor')?.value.trim() || '';
+            const source = document.getElementById('cardSource')?.value.trim() || '';
+            const sourceLink = document.getElementById('cardLink')?.value.trim() || '';
+            const mainCat = document.getElementById('cardMainCat')?.value || mainCategories[0];
+            const status = document.getElementById('cardStatus')?.value || '没玩过';
+            const tagInputs = document.querySelectorAll('#tagCheckGroup input[type=checkbox]');
+            const tags = [];
+            tagInputs.forEach(cb => { if (cb.checked) tags.push(cb.value); });
+
+            let imageData = window._tempImage || '';
+            if (!imageData && id) {
+                const old = cards.find(c => c.id === id) || trash.find(c => c.id === id);
+                if (old) imageData = old.imageData || '';
+            }
+
+            const cardData = {
+                id: id || uid(),
+                name, author, source, sourceLink,
+                mainCategory: mainCat,
+                status,
+                tags,
+                imageData,
+                files: []  // 初始化空附件
+            };
+
+            if (id) {
+                const idx = cards.findIndex(c => c.id === id);
+                if (idx !== -1) {
+                    // 保留原有附件
+                    cardData.files = cards[idx].files || [];
+                    cards[idx] = cardData;
+                } else {
+                    const tidx = trash.findIndex(c => c.id === id);
+                    if (tidx !== -1) {
+                        cardData.files = trash[tidx].files || [];
+                        trash[tidx] = cardData;
+                    }
+                }
+            } else {
+                cards.push(cardData);
+            }
+            window._tempImage = null;
+            saveAll();
+            currentView = 'home';
+            render();
+        };
+
+        // 详情页 (含附件长按分类)
+        function renderDetail() {
+            const card = cards.find(c => c.id === editingCardId) || trash.find(c => c.id === editingCardId);
+            if (!card) { goHome(); return; }
+            const files = card.files || [];
+            const html = `
+                <div class="app-header">
+                    <h1><i class="fas fa-arrow-left" onclick="goHome()"></i> 角色详情</h1>
+                    <div class="header-actions">
+                        <i class="fas fa-edit" onclick="editCard('${card.id}')" title="编辑"></i>
+                        <i class="fas fa-file-import" onclick="importFiles('${card.id}')" title="导入文件"></i>
+                    </div>
+                </div>
+                <div class="scroll-area detail-container">
+                    ${card.imageData ? `<img src="${card.imageData}" class="img-preview">` : '<div style="height:120px; background:#eee; border-radius:12px;"></div>'}
+                    <div class="detail-field"><span class="field-label">角色名</span><div class="field-value">${card.name}</div></div>
+                    <div class="detail-field"><span class="field-label">作者</span><div class="field-value">${card.author || '—'}</div></div>
+                    <div class="detail-field"><span class="field-label">来源</span><div class="field-value">${card.source || '—'}</div></div>
+                    <div class="detail-field"><span class="field-label">链接</span><div class="field-value">${card.sourceLink || '—'}</div></div>
+                    <div class="detail-field"><span class="field-label">状态/主分类</span><div class="field-value">${card.status} · ${card.mainCategory}</div></div>
+                    <div class="detail-field"><span class="field-label">标签</span><div class="field-value">${card.tags?.join(' · ') || '无'}</div></div>
+                    
+                    <div style="margin:12px 0;">
+                        <h4 style="font-size:0.9rem;"> 附件 (长按分类) ${files.length}</h4>
+                        ${files.map((f, idx) => `
+                            <div class="file-row" oncontextmenu="longPressFile('${card.id}', ${idx}, event)">
+                                <div class="file-info">
+                                    <i class="fas fa-file"></i> 
+                                    <span style="max-width:120px; overflow:hidden; text-overflow:ellipsis;">${f.name}</span>
+                                    ${f.category ? `<span class="file-category">${f.category}</span>` : ''}
+                                </div>
+                                <div style="display:flex; gap:2px;">
+                                    <a download="${f.name}" href="${f.content}" style="text-decoration:none;"><i class="fas fa-download btn-icon"></i></a>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${files.length===0 ? '<div style="color:#aaa; font-size:0.8rem;">暂无导入的文件，点击右上角导入</div>' : ''}
+                    </div>
+
+                    <div class="bottom-delete" onclick="moveToTrash('${card.id}')">
+                        <i class="fas fa-trash-alt"></i> 删除角色卡 (移至回收站)
+                    </div>
+                </div>
+            `;
+            document.getElementById('app').innerHTML = html;
+        }
+
+        // 长按附件分类函数 (阻止默认菜单，弹出提示)
+        window.longPressFile = function(cardId, fileIndex, event) {
+            event.preventDefault();
+            const card = cards.find(c => c.id === cardId) || trash.find(c => c.id === cardId);
+            if (!card || !card.files || !card.files[fileIndex]) return;
+            const newCategory = prompt('为附件设置分类 (输入标签，例如: 世界观)', card.files[fileIndex].category || '');
+            if (newCategory !== null) {
+                card.files[fileIndex].category = newCategory.trim() || '';
+                saveAll();
+                renderDetail(); // 刷新
+            }
+        };
+
+        window.editCard = (id) => { editingCardId = id; window._tempImage = null; currentView = 'form'; render(); };
+        window.moveToTrash = (id) => {
+            const idx = cards.findIndex(c => c.id === id);
+            if (idx !== -1) {
+                trash.push(cards[idx]);
+                cards.splice(idx, 1);
+                saveAll();
+                goHome();
+            }
+        };
+        window.importFiles = (cardId) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.accept = '.png,.json,.txt,.yaml,.yml';
+            input.onchange = (e) => {
+                const files = Array.from(e.target.files);
+                const card = cards.find(c => c.id === cardId) || trash.find(c => c.id === cardId);
+                if (!card) return;
+                if (!card.files) card.files = [];
+                Promise.all(files.map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (re) => resolve({ 
+                            name: file.name, 
+                            type: file.type, 
+                            content: re.target.result,
+                            category: ''  // 默认无分类
+                        });
+                        reader.readAsDataURL(file);
+                    });
+                })).then(results => {
+                    card.files.push(...results);
+                    saveAll();
+                    renderDetail();
+                });
+            };
+            input.click();
+        };
+
+        // 启动
+        loadFromStorage();
+        render();
+
+        // ----------------- PWA Service Worker 注册 (轻量) -----------------
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // 使用一个极简的 Service Worker 脚本 (通过blob无法注册，这里尝试注册一个内联但需要真实文件)
+                // 为了演示，我们注册一个指向同源的空白worker，但实际上不存在，会fallback。
+                // 但我们可以用cache first策略的简单脚本？由于无法内联，我们尝试从data URI生成? 不行。
+                // 这里注册一个不存在的 sw.js 并catch错误。
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW注册失败(可忽略):', err));
+            });
+        }
+    })();
+</script>
+<!-- 注：Service Worker 需要真实的 sw.js 文件才能生效，此处仅作演示。要完整安装PWA，请在同目录放置sw.js。 -->
+</body>
+</html>
